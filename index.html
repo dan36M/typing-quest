@@ -1,0 +1,1406 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Typing Quest</title>
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect x='4' y='14' width='56' height='36' rx='8' fill='%237048e8'/%3E%3Crect x='12' y='22' width='8' height='8' rx='2' fill='%23fff'/%3E%3Crect x='24' y='22' width='8' height='8' rx='2' fill='%23fff'/%3E%3Crect x='36' y='22' width='8' height='8' rx='2' fill='%23fff'/%3E%3Crect x='16' y='36' width='32' height='6' rx='2' fill='%23ffe066'/%3E%3C/svg%3E">
+<style>
+:root {
+  --bg: #f3f0ff; --card: #ffffff; --ink: #212529; --muted: #868e96; --accent: #7048e8;
+  --good: #2f9e44; --bad: #e03131; --gold: #f59f00; --line: #e5dbff;
+  --ui: "Segoe UI", "Selawik", system-ui, -apple-system, Roboto, "Helvetica Neue", Arial, sans-serif;
+  --mono: Consolas, "DejaVu Sans Mono", "Liberation Mono", Menlo, monospace;
+}
+* { box-sizing: border-box; }
+html, body { margin: 0; background: var(--bg); color: var(--ink); font-family: var(--ui); }
+body { min-height: 100vh; }
+#app { max-width: 1180px; margin: 0 auto; padding: 0 16px 30px; }
+h1, h2, h3, p { margin: 0; }
+.center { text-align: center; }
+.row { display: flex; align-items: center; justify-content: center; flex-wrap: wrap; gap: 12px; }
+.col { display: flex; flex-direction: column; align-items: center; }
+.btn { border: 0; color: #fff; font: 700 16px var(--ui); padding: 10px 22px; border-radius: 10px; cursor: pointer;
+  transition: filter .1s, transform .05s; white-space: pre-line; line-height: 1.25; }
+.btn:hover { filter: brightness(.87); }
+.btn:active { transform: translateY(1px); }
+.btn:disabled { background: #ced4da !important; cursor: default; filter: none; }
+.card { background: var(--card); border: 2px solid var(--line); border-radius: 14px; }
+.muted { color: var(--muted); }
+.header { display: flex; align-items: center; gap: 16px; padding: 16px 8px 6px; min-height: 64px; }
+.header h2 { font-size: 26px; }
+.header .right { margin-left: auto; display: flex; align-items: center; gap: 30px; }
+.stat { padding: 8px 22px; text-align: center; }
+.stat b { display: block; font-size: 30px; }
+.stat span { font-size: 14px; color: var(--muted); }
+.tiles { display: grid; grid-template-columns: repeat(3, 230px); gap: 24px; justify-content: center; }
+.tile { color: #fff; border-radius: 14px; padding: 22px 10px; text-align: center; cursor: pointer; user-select: none; }
+.tile:hover { filter: brightness(.87); }
+.tile b { font-size: 25px; display: block; margin-bottom: 4px; }
+.tile span { font-size: 15px; white-space: pre-line; }
+.lessonrow { display: flex; align-items: center; background: var(--card); border: 2px solid; border-radius: 10px;
+  margin: 5px 0; overflow: hidden; min-height: 56px; gap: 10px; }
+.lessonrow .stripe { width: 10px; align-self: stretch; }
+.stage-title { font-size: 22px; font-weight: 700; margin: 22px 0 4px; }
+.typebox { background: var(--card); border: 3px solid #d0bfff; border-radius: 12px; padding: 14px 18px;
+  font-family: var(--mono); white-space: pre; overflow: hidden; }
+.typebox .done { color: var(--good); }
+.typebox .todo { color: #495057; }
+.typebox .cur { background: #ffe066; color: var(--ink); text-decoration: underline; }
+.typebox .err { background: #ffa8a8 !important; color: var(--bad) !important; }
+.nextline { font-family: var(--mono); font-size: 22px; color: #adb5bd; padding: 8px 21px 0; white-space: pre; min-height: 36px; }
+.freebox { background: var(--card); border: 3px solid #d0bfff; border-radius: 12px; padding: 14px 18px;
+  font-family: var(--mono); font-size: 27px; line-height: 1.6; height: 280px; overflow: hidden;
+  white-space: pre-wrap; color: #495057; position: relative; }
+.freebox .ok { color: var(--good); }
+.freebox .bad { color: var(--bad); background: #ffc9c9; }
+.freebox .cur { background: #ffe066; text-decoration: underline; }
+.pbar { height: 18px; background: #e5dbff; border-radius: 9px; overflow: hidden; width: min(900px, 100%); margin: 4px auto 14px; }
+.pbar div { height: 100%; width: 0; transition: width .15s; }
+.kb { position: relative; }
+.kb .k { position: absolute; display: flex; align-items: center; justify-content: center; border: 1px solid #adb5bd;
+  border-radius: 6px; font-weight: 700; color: var(--ink); }
+.kb .k.lit { border: 4px solid var(--ink); }
+.kb .bump::after { content: ""; position: absolute; bottom: 7px; left: 50%; width: 12px; margin-left: -6px; height: 2px; background: var(--ink); }
+#caps { position: fixed; top: 4px; left: 50%; transform: translateX(-50%); background: var(--bad); color: #fff;
+  font: 700 18px var(--ui); padding: 6px 18px; border-radius: 8px; z-index: 10; display: none; }
+input[type=text] { font: 20px var(--ui); padding: 6px 10px; border: 1px solid #868e96; border-radius: 6px; width: 220px; }
+label.check { display: flex; align-items: center; gap: 10px; font-size: 19px; padding: 6px 20px; cursor: pointer; }
+label.check input { width: 20px; height: 20px; }
+canvas.game { display: block; margin: 4px auto; max-width: 100%; border-radius: 10px; }
+.trophies { display: grid; grid-template-columns: repeat(5, 1fr); gap: 10px; padding: 0 14px 14px; }
+.trophy { border: 2px solid; border-radius: 10px; text-align: center; padding: 6px; }
+.link { color: var(--muted); text-decoration: underline; cursor: pointer; font-size: 14px; }
+.focus-note { position: fixed; bottom: 10px; left: 50%; transform: translateX(-50%); background: #fff3bf; border: 2px solid var(--gold);
+  border-radius: 10px; padding: 8px 18px; font-weight: 700; display: none; z-index: 10; }
+@media (max-width: 820px) {
+  .tiles { grid-template-columns: repeat(2, 1fr); }
+  .trophies { grid-template-columns: repeat(2, 1fr); }
+}
+</style>
+</head>
+<body>
+<div id="caps">CAPS LOCK is ON -- press Caps Lock to turn it off!</div>
+<div id="app"></div>
+<div class="focus-note" id="focusnote">Click anywhere on the page so your typing goes to Typing Quest!</div>
+<script>
+"use strict";
+// ======================================================================= data
+const FINGER_NAMES = { lp: "Left Pinky", lr: "Left Ring", lm: "Left Middle", li: "Left Pointer",
+  ri: "Right Pointer", rm: "Right Middle", rr: "Right Ring", rp: "Right Pinky", th: "Thumb" };
+const FINGER_COLORS = { lp: "#ff8fa3", lr: "#ffb86b", lm: "#ffe066", li: "#8ce99a", ri: "#66d9e8",
+  rm: "#74c0fc", rr: "#b197fc", rp: "#f783ac", th: "#ced4da" };
+const _FINGER_KEYS = { lp: "`1qaz", lr: "2wsx", lm: "3edc", li: "45rtfgvb", ri: "67yuhjnm", rm: "8ik,",
+  rr: "9ol.", rp: "0-=p[]\\;'/" };
+const FINGER_OF = {};
+for (const [f, ks] of Object.entries(_FINGER_KEYS)) for (const k of ks) FINGER_OF[k] = f;
+Object.assign(FINGER_OF, { " ": "th", space: "th", tab: "lp", caps: "lp", shift_l: "lp", shift_r: "rp",
+  enter: "rp", backspace: "rp" });
+const SHIFT_MAP = { "~": "`", "!": "1", "@": "2", "#": "3", "$": "4", "%": "5", "^": "6", "&": "7", "*": "8",
+  "(": "9", ")": "0", "_": "-", "+": "=", "{": "[", "}": "]", "|": "\\", ":": ";", '"': "'", "<": ",", ">": ".", "?": "/" };
+const HOME_KEYS = ["a", "s", "d", "f", "j", "k", "l", ";"];
+
+function keyInfo(ch) { // -> [base, shiftKeyOrNull, finger]
+  if (ch === " ") return ["space", null, "th"];
+  let base;
+  if (/[A-Z]/.test(ch)) base = ch.toLowerCase();
+  else if (ch in SHIFT_MAP) base = SHIFT_MAP[ch];
+  else return [ch, null, FINGER_OF[ch] || "th"];
+  const finger = FINGER_OF[base] || "th";
+  return [base, finger.startsWith("l") ? "shift_r" : "shift_l", finger];
+}
+
+const KEY_ROWS = [
+  [["`", "`", 1], ...[..."1234567890-="].map(c => [c, c, 1]), ["backspace", "Back", 2]],
+  [["tab", "Tab", 1.5], ...[..."qwertyuiop"].map(c => [c, c.toUpperCase(), 1]), ["[", "[", 1], ["]", "]", 1], ["\\", "\\", 1.5]],
+  [["caps", "Caps", 1.8], ...[..."asdfghjkl"].map(c => [c, c.toUpperCase(), 1]), [";", ";", 1], ["'", "'", 1], ["enter", "Enter", 2.2]],
+  [["shift_l", "Shift", 2.3], ...[..."zxcvbnm"].map(c => [c, c.toUpperCase(), 1]), [",", ",", 1], [".", ".", 1], ["/", "/", 1], ["shift_r", "Shift", 2.7]],
+  [["space", "", 6.5]],
+];
+const SPACE_OFFSET = 3.9;
+
+const WORDS = `
+a i am an as at be by do go he if in is it me my no of on or so to up us we
+all and are ask bad bag bat bed big box boy bus but can cap car cat cow cry cup cut dad day did dig dog dot
+eat egg end eye fan far fat few fix fly fog for fox fun fur gas get got gum had has hat her him his hop hot
+how hug ice ink its jam jar jet job jog joy key kid kit lab lad lap law lay leg let lid lip lit log lot low
+mad man map may men mix mom mop mud new not now nut oak odd off oil old one our out owl own pan pat paw pay
+pen pet pig pin pit pop pot put ran rat raw red rib rid rip rob rod row rub rug run sad sat saw say sea see
+set sew she shy sip sit six sky sly sob son sun tag tan tap tar tea ten the tie tin tip toe ton too top toy
+try tub tug two use van vet wag was way web wet who why win wit won wow yak yes yet you zap zip zoo
+able also away baby back ball band bark bath bear beat bell best bike bird blue boat body bone book boot
+cake call calm came camp card care cave city clap coat cold cook cool corn cute dark dash deal deep desk dish
+does door down draw drum duck dust each easy east edge fall farm fast feel feet fell find fire fish flag
+flat flip food foot fork frog from full game gate gave gift girl give glad glow goal goat gold good grab grew
+grow hair half hall hand hard have head hear heat help here hide high hill hold hole home hope horn hose hunt
+idea into jump just keep kick kind king kite knee know lake lamp land last late leaf left less life like line
+lion list live look lost loud love luck made mail make many mask meal milk mind mint miss moon more most move
+much must name near neck need nest next nice nose note once only open over pack page park part past path pick
+pink play plan pond pool puff pull pump rain read real rest ride ring road rock roof room rope rose rule safe
+said sail salt same sand save seal seed seen shed ship shoe shop show side sign sing sink skip slow snow soap
+sock soft some song soon star stay step stop such swim tail take talk tall team tell tent than that them then
+they this time told tree trip true tune turn very wait wake walk wall want warm wash wave week well went were
+what when wide wild will wind wing wish with wolf wood word work yard year your zero zoom
+about after again apple award beach begin being below berry black block bread brave brick bring brown brush
+build candy catch chair chalk cheer chess chick child class clean clear climb clock cloud crown dance dream
+dress drink early earth extra fairy field first flash float floor flute found frame fresh fruit funny giant
+glass globe grape grass great green happy heart horse house jelly juice laugh learn lemon light lucky lunch
+magic mango march money month mouse music night ocean often paint panda party peach piano pizza place plant
+plate queen quick quiet quilt radio river robot round ruler scarf seven shape share sheep shell shine skate
+sleep smile snack snake sound space spell spoon sport stamp stand start stick stone storm story sugar sunny
+sweet table teeth thank there thing think three tiger toast today tooth tower train treat truck under video
+voice water whale wheel where white world write young zebra
+animal banana basket bright bubble button candle carrot castle cookie dragon family father finger flower
+forest friend garden guitar hammer jacket jungle kitten ladder letter little marble market monkey mother
+number orange pencil people pepper picnic planet pocket puppet purple rabbit rocket school silver simple
+sister spider spring summer ticket tomato turtle wagon window winter wizard yellow
+`.split(/\s+/).filter(Boolean);
+const HOME_WORDS = `
+a as ask add all ad dad sad lad fad had has gas lag jag lass lash dash fall hall shall flask salad
+glad flag half gal alas sash gag hag jazz kale fads lads asks adds falls halls flags dads
+`.split(/\s+/).filter(Boolean);
+const ALL_WORDS = [...new Set([...WORDS, ...HOME_WORDS])].sort();
+
+function wordsFrom(keys, must, maxLen) {
+  keys = new Set(keys);
+  const mustSet = must ? new Set(must) : null;
+  return ALL_WORDS.filter(w => [...w].every(c => keys.has(c)) && (!maxLen || w.length <= maxLen)
+    && (!mustSet || [...w].some(c => mustSet.has(c))));
+}
+
+const STAGES = [["Getting Ready", "#845ef7"], ["Home Row", "#12b886"], ["Top Row", "#228be6"],
+  ["Bottom Row", "#fd7e14"], ["Capitals & Punctuation", "#e64980"], ["Numbers", "#7950f2"], ["Speed Zone", "#fa5252"]];
+
+const CAPS_LINES = ["Sam and Kim ran to the park.", "The Cat sat on a Big Red Rug.", "I like my Dog and my Cat.",
+  "Ann has a Green Kite.", "We went to Ohio in June.", "Max can Jump and Run Fast.", "Tim and Lily play a Game.",
+  "My Mom has a Blue Car.", "Look at the Big Moon!", "Zoe and Ben like Pizza.", "Friday is a Fun Day.",
+  "The Sun is Hot and Bright."];
+const PUNCT_LINES = ["Can you see it? I can.", "It's a nice day, isn't it?", "Where is my hat? Is it here?",
+  "Don't run in the hall.", "Who ate the cake? Not me!", "I can't find my sock.", "Wow! That was fast!",
+  "Yes, I'd like one, please.", "What's your name? I'm Lily.", "Stop! Look! Listen!", 'He said, "Hello there!"',
+  "Let's go to the zoo!", "Is it time to eat? Yes!", "We're here. You're late!"];
+const SENTENCE_LINES = ["The quick brown fox jumps over the lazy dog.", "A happy puppy likes to play in the park.",
+  "My friend and I built a big sand castle.", "The rocket zoomed up into the dark night sky.",
+  "Please pass the jelly and the bread, Mom.", "We saw a whale jump out of the blue ocean.",
+  "It is fun to learn new things every day.", "Pack your bag, grab your coat, and let's go!",
+  "Six zebras quickly jumped over the fence.", "Do you want to play a game with me?"];
+const NUM_A_LINES = ["1 2 3 4 5", "11 22 33 44 55", "12 34 51 23 45", "I am 5.", "Count 1 2 3 4 5.",
+  "12 cats and 34 dogs", "5 4 3 2 1 go", "132 245 314 521", "I have 3 red hats.", "Add 2 and 3 to get 5.",
+  "Page 14 and page 25"];
+const NUM_B_LINES = ["6 7 8 9 0", "66 77 88 99 00", "67 89 06 78 90", "I have 10 toes.", "Count 6 7 8 9 10.",
+  "We had 80 grapes.", "9 8 7 6 go", "670 789 906 870", "There are 60 minutes.", "Add 7 and 9 to get 16.",
+  "Room 806 and room 97"];
+const NUM_MIX_LINES = ["My team won 24 to 19!", "There are 365 days in a year.", "I read 12 books this summer.",
+  "The bus comes at 8 and 3.", "We need 4 cups and 2 eggs.", "My house is number 1570.",
+  "There are 7 days in 1 week.", "A dog has 4 legs and 1 tail.", "I scored 100 on my test!",
+  "Grandma is 68 years old.", "It is 72 degrees today.", "12 months make 1 year."];
+const GETTING_READY_TIPS = [
+  ["Sit up tall", "Sit up straight with your feet flat on the floor. Keep your back against the chair."],
+  ["Eyes on the screen", "Try not to look at your hands! Your fingers will learn where the keys are all by themselves."],
+  ["Home row", "Put your fingers on A S D F and J K L ;  -- this is called the HOME ROW. Your fingers always come back home."],
+  ["Find the bumps", "Feel the little bumps on the F and J keys? Your two pointer fingers go there. You can find home without looking!"],
+  ["Thumbs on space", "Rest your thumbs lightly on the space bar. Tap it to make a space between words."],
+  ["Gentle taps", "Tap the keys gently and quickly -- no need to smash them. Accuracy first, then speed!"],
+];
+
+function mk(id, stage, title, kind, keys = "", tip = "", lines = [], goal = 0, target = 8) {
+  return { id, stage, title, kind, new: keys, tip, lines, goal, target_wpm: target };
+}
+const LESSONS = [
+  mk("ready", 0, "How to Sit & Where to Put Your Fingers", "info"),
+  mk("fj", 1, "F and J", "keys", "fj", "Your pointer fingers go on F and J. Feel the bumps!", [], 0, 6),
+  mk("dk", 1, "D and K", "keys", "dk", "Your middle fingers go on D and K.", [], 0, 6),
+  mk("sl", 1, "S and L", "keys", "sl", "Your ring fingers go on S and L.", [], 0, 7),
+  mk("a;", 1, "A and ;", "keys", "a;", "Your pinky fingers go on A and ; (semicolon).", [], 0, 7),
+  mk("gh", 1, "G and H", "keys", "gh", "Stretch your pointer fingers to the middle: left pointer to G, right pointer to H.", [], 0, 8),
+  mk("home", 1, "Home Row Words", "review", "", "Real words using only the home row!", [], 0, 8),
+  mk("ei", 2, "E and I", "keys", "ei", "Reach UP with your middle fingers: left middle to E, right middle to I.", [], 0, 8),
+  mk("ru", 2, "R and U", "keys", "ru", "Reach up with your pointer fingers: left pointer to R, right pointer to U.", [], 0, 8),
+  mk("ty", 2, "T and Y", "keys", "ty", "Pointer fingers reach up and in: left pointer to T, right pointer to Y.", [], 0, 9),
+  mk("wo", 2, "W and O", "keys", "wo", "Ring fingers reach up: left ring to W, right ring to O.", [], 0, 9),
+  mk("qp", 2, "Q and P", "keys", "qp", "Pinkies reach up: left pinky to Q, right pinky to P.", [], 0, 9),
+  mk("top", 2, "Top Row Words", "review", "", "Words using the home row and top row!", [], 0, 10),
+  mk("vm", 3, "V and M", "keys", "vm", "Reach DOWN with your pointer fingers: left pointer to V, right pointer to M.", [], 0, 10),
+  mk("c,", 3, "C and Comma", "keys", "c,", "Middle fingers reach down: left middle to C, right middle to , (comma).", [], 0, 10),
+  mk("x.", 3, "X and Period", "keys", "x.", "Ring fingers reach down: left ring to X, right ring to . (period).", [], 0, 10),
+  mk("bn", 3, "B and N", "keys", "bn", "Pointer fingers reach down and in: left pointer to B, right pointer to N.", [], 0, 11),
+  mk("z/", 3, "Z and Slash", "keys", "z/", "Pinkies reach down: left pinky to Z, right pinky to / (slash).", [], 0, 11),
+  mk("all", 3, "All the Letters!", "review", "", "You know EVERY letter now. Let's use them all!", [], 0, 12),
+  mk("caps", 4, "Capital Letters (Shift)", "custom", "",
+    "To make a CAPITAL letter, hold SHIFT with the pinky on the OTHER hand, then tap the letter.", CAPS_LINES, 0, 10),
+  mk("punct", 4, "? ! ' and \"", "custom", "",
+    "? is Shift + /.  ! is Shift + 1.  ' is next to ;.  Use your pinky fingers!", PUNCT_LINES, 0, 10),
+  mk("sent", 4, "Whole Sentences", "custom", "", "Put it all together: capitals, spaces, and periods.", SENTENCE_LINES, 0, 12),
+  mk("n15", 5, "Numbers 1 to 5", "custom", "",
+    "Reach way up to the number row with your LEFT hand. Pinky=1, Ring=2, Middle=3, Pointer=4 and 5.", NUM_A_LINES, 0, 8),
+  mk("n60", 5, "Numbers 6 to 0", "custom", "", "Now the RIGHT hand. Pointer=6 and 7, Middle=8, Ring=9, Pinky=0.", NUM_B_LINES, 0, 8),
+  mk("nmix", 5, "Numbers and Words", "custom", "", "Mix numbers into real sentences.", NUM_MIX_LINES, 0, 10),
+];
+for (const g of [10, 15, 20, 25, 30, 35, 40, 50])
+  LESSONS.push(mk(`speed${g}`, 6, `Speed Sprint: ${g} WPM`, "speed", "",
+    `Type fast AND careful! Reach ${g} words per minute with at least 85% accuracy to pass.`, [], g, g));
+
+function learnedKeys(index) {
+  const keys = new Set();
+  for (const l of LESSONS.slice(0, index + 1)) for (const c of l.new) keys.add(c);
+  return keys;
+}
+
+// random helpers (Python-style)
+const randint = (a, b) => a + Math.floor(Math.random() * (b - a + 1));
+const choice = arr => arr[Math.floor(Math.random() * arr.length)];
+function shuffle(arr) { for (let i = arr.length - 1; i > 0; i--) { const j = randint(0, i); [arr[i], arr[j]] = [arr[j], arr[i]]; } return arr; }
+const sample = (arr, k) => shuffle(arr.slice()).slice(0, k);
+
+function chunks(keys, weightKeys, nMin = 2, nMax = 4) {
+  const pool = [...keys, ...[...weightKeys, ...weightKeys, ...weightKeys]];
+  let s = ""; const n = randint(nMin, nMax);
+  for (let i = 0; i < n; i++) s += choice(pool);
+  return s;
+}
+function fillLine(makeToken, width = 34) {
+  const toks = []; let tries = 0;
+  while (tries < 60 && toks.join(" ").length < width - 3) {
+    const tok = makeToken();
+    if ([...toks, tok].join(" ").length <= width) toks.push(tok); else tries++;
+  }
+  return toks.join(" ");
+}
+
+function generateLines(lesson) {
+  const idx = LESSONS.indexOf(lesson);
+  if (lesson.kind === "keys") {
+    const nw = [...lesson.new], keys = learnedKeys(idx), lines = [];
+    const pats = [...nw.map(c => c.repeat(3)), ...nw.flatMap(a => nw.filter(b => b !== a).map(b => a + b))];
+    lines.push(fillLine(() => choice([...pats, ...nw.map(c => c + c)])));
+    lines.push(fillLine(() => chunks(keys, nw)));
+    let ws = wordsFrom(keys, nw);
+    const allw = wordsFrom(keys);
+    const punct = nw.filter(c => ",.".includes(c));
+    if (punct.length) ws = allw.filter(w => w.length > 1);
+    const word = () => {
+      let w = choice(Math.random() < .7 ? ws : allw);
+      if (punct.length && Math.random() < .45) w += choice(punct);
+      return w;
+    };
+    for (let i = 0; i < 2; i++)
+      lines.push(ws.length >= 3 ? fillLine(word) : fillLine(() => chunks(keys, nw, 3, 5)));
+    return lines;
+  }
+  if (lesson.kind === "review") {
+    const ws = wordsFrom(learnedKeys(idx));
+    return [0, 1, 2, 3].map(() => fillLine(() => choice(ws), 36));
+  }
+  if (lesson.kind === "custom") return sample(lesson.lines, 4);
+  if (lesson.kind === "speed") {
+    const g = lesson.goal, mx = g <= 15 ? 4 : g <= 25 ? 5 : 7;
+    const ws = WORDS.filter(w => w.length <= mx);
+    return [0, 1, 2, 3, 4].map(() => fillLine(() => choice(ws), 38));
+  }
+  return [];
+}
+
+const PASSAGES = [
+  "The sun came up over the hill. A little bird sang a happy song. It was going to be a great day to play outside.",
+  "My dog loves to run in the park. He chases the ball and brings it back to me. Then he rolls in the grass and wags his tail.",
+  "We went to the beach last summer. The water was cool and the sand was warm. We built a castle and found pretty shells.",
+  "A rocket blasted off into space. It flew past the moon and the stars. The astronauts waved as they floated in the ship.",
+  "The garden is full of flowers. There are red roses, yellow daisies, and purple tulips. Bees buzz from one flower to the next.",
+  "On rainy days we stay inside. We read books, build forts with blankets, and bake cookies. Rainy days can be fun too.",
+  "The panda sat in the bamboo forest. It munched on green leaves all day long. Then it curled up and took a long nap.",
+  "Our class took a trip to the zoo. We saw lions, tigers, and a giraffe with a very long neck. The monkeys made us laugh.",
+  "Snow fell all night long. In the morning the whole world was white. We put on our boots and made a big snowman.",
+  "The dragon lived in a cave on top of a mountain. It was not mean at all. It just liked to read books and drink tea.",
+  "Learning to type takes practice. Keep your fingers on the home row and your eyes on the screen. Soon you will be fast.",
+  "The owl sleeps in the day and wakes up at night. It has big eyes to help it see in the dark. It can turn its head around.",
+  "My friend and I like to ride our bikes. We ride down the street to the park. Then we race back home for lunch.",
+  "A turtle carries its house on its back. When it is scared, it hides inside its shell. Turtles can live a very long time.",
+  "The fall leaves turned red, orange, and gold. We raked them into a giant pile. Then we jumped right in the middle.",
+];
+function makeTestText(minChars = 1500) {
+  let ps = shuffle(PASSAGES.slice()); const out = [];
+  while (out.join(" ").length < minChars) {
+    if (!ps.length) ps = shuffle(PASSAGES.slice());
+    out.push(ps.pop());
+  }
+  return out.join(" ");
+}
+const RACE_TEXTS = [...SENTENCE_LINES, ...PASSAGES.filter(p => p.length < 130)];
+
+// ===================================================================== storage
+const SAVE_KEY = "typingquest.save.v1";
+function newProfile() {
+  return { created: Date.now() / 1000, lessons: {}, tests: [], keys: {},
+    games: { rain_best: 0, race_wins: 0, race_best_wpm: 0 }, seconds: 0, badges: [],
+    settings: { sound: true, keyboard: true, hands: true } };
+}
+const store = {
+  data: { profiles: {}, last: null, unlock_all: false },
+  load() {
+    try { Object.assign(this.data, JSON.parse(localStorage.getItem(SAVE_KEY)) || {}); } catch (e) { }
+    this.fix();
+  },
+  fix() {
+    for (const p of Object.values(this.data.profiles)) {
+      const base = newProfile();
+      for (const k in base) if (!(k in p)) p[k] = base[k];
+      for (const k in base.settings) if (!(k in p.settings)) p.settings[k] = base.settings[k];
+      for (const k in base.games) if (!(k in p.games)) p.games[k] = base.games[k];
+    }
+  },
+  save() { try { localStorage.setItem(SAVE_KEY, JSON.stringify(this.data)); } catch (e) { } },
+  get names() { return Object.keys(this.data.profiles).sort(); },
+  add(name) { if (!this.data.profiles[name]) this.data.profiles[name] = newProfile(); this.data.last = name; this.save(); },
+  del(name) { delete this.data.profiles[name]; if (this.data.last === name) this.data.last = null; this.save(); },
+};
+function recordKeys(p, hits, misses) {
+  for (const [ch, n] of Object.entries(hits)) (p.keys[ch] = p.keys[ch] || [0, 0])[0] += n;
+  for (const [ch, n] of Object.entries(misses)) (p.keys[ch] = p.keys[ch] || [0, 0])[1] += n;
+}
+const bestTestWpm = p => Math.max(0, ...p.tests.map(t => t.wpm));
+
+// ====================================================================== badges
+const lessonDone = (p, id) => ((p.lessons[id] || {}).stars || 0) >= 1;
+function bestWpmAny(p) {
+  const lw = Math.max(0, ...Object.entries(p.lessons).filter(([k]) => k.startsWith("speed")).map(([, v]) => v.best_wpm || 0));
+  return Math.max(bestTestWpm(p), lw, p.games.race_best_wpm);
+}
+const totalStars = p => Object.values(p.lessons).reduce((a, v) => a + (v.stars || 0), 0);
+const BADGES = [
+  ["first", "First Steps", "Finish your first key lesson", p => lessonDone(p, "fj")],
+  ["home", "Home Row Hero", "Finish the Home Row", p => lessonDone(p, "home")],
+  ["top", "Top Row Star", "Finish the Top Row", p => lessonDone(p, "top")],
+  ["abc", "Alphabet Master", "Learn every letter", p => lessonDone(p, "all")],
+  ["shift", "Shift Wizard", "Finish Capital Letters", p => lessonDone(p, "caps")],
+  ["num", "Number Ninja", "Finish the Numbers stage", p => lessonDone(p, "nmix")],
+  ["perfect", "Perfect!", "Finish a lesson with 100% accuracy", p => Object.values(p.lessons).some(v => (v.best_acc || 0) >= 99.95)],
+  ["stars30", "Star Collector", "Earn 30 stars", p => totalStars(p) >= 30],
+  ["w10", "Speedy 10", "Type 10 words per minute", p => bestWpmAny(p) >= 10],
+  ["w20", "Zooming 20", "Type 20 words per minute", p => bestWpmAny(p) >= 20],
+  ["w30", "Turbo 30", "Type 30 words per minute", p => bestWpmAny(p) >= 30],
+  ["w40", "Lightning 40", "Type 40 words per minute", p => bestWpmAny(p) >= 40],
+  ["rain", "Rain Stopper", "Pop 25 words in Word Rain", p => p.games.rain_best >= 25],
+  ["race", "Rocket Racer", "Win a Rocket Race", p => p.games.race_wins >= 1],
+  ["time", "Hard Worker", "Practice for 30 minutes total", p => p.seconds >= 1800],
+];
+function lessonStars(lesson, wpm, acc) {
+  if (lesson.kind === "speed") {
+    if (wpm < lesson.goal || acc < 85) return 0;
+    return acc >= 95 ? 3 : acc >= 90 ? 2 : 1;
+  }
+  if (acc < 80) return 0;
+  if (acc >= 95 && wpm >= lesson.target_wpm) return 3;
+  return acc >= 90 ? 2 : 1;
+}
+
+// ======================================================================= look
+const C = { BG: "#f3f0ff", CARD: "#ffffff", INK: "#212529", MUTED: "#868e96", ACCENT: "#7048e8",
+  GOOD: "#2f9e44", BAD: "#e03131", GOLD: "#f59f00" };
+function blend(c1, c2, t) {
+  const a = [1, 3, 5].map(i => parseInt(c1.slice(i, i + 2), 16)), b = [1, 3, 5].map(i => parseInt(c2.slice(i, i + 2), 16));
+  return "#" + a.map((x, i) => Math.round(x + (b[i] - x) * t).toString(16).padStart(2, "0")).join("");
+}
+const darker = (c, t = .25) => blend(c, "#000000", t);
+const starsText = (n, total = 3) => "★".repeat(n) + "☆".repeat(total - n);
+const fmt0 = x => String(Math.round(x));
+
+function h(tag, attrs, ...kids) {
+  const el = document.createElement(tag);
+  if (attrs) for (const [k, v] of Object.entries(attrs)) {
+    if (v == null) continue;
+    if (k === "style") el.style.cssText = v;
+    else if (k.startsWith("on")) el.addEventListener(k.slice(2), v);
+    else if (k === "text") el.textContent = v;
+    else el.setAttribute(k, v);
+  }
+  for (const kid of kids.flat()) if (kid != null && kid !== false) el.append(kid.nodeType ? kid : String(kid));
+  return el;
+}
+function btn(text, onclick, color = C.ACCENT, size = 16, extra = "") {
+  return h("button", { class: "btn", style: `background:${color};font-size:${size}px;${extra}`, onclick, type: "button" }, text);
+}
+const label = (text, size = 16, color = C.INK, extra = "") => h("div", { style: `font-size:${size}px;color:${color};${extra}` }, text);
+const title = (text, size = 32, color = C.INK, extra = "") => h("h1", { style: `font-size:${size}px;color:${color};${extra}` }, text);
+
+// ====================================================================== sound
+const SOUNDS = {
+  enabled: true, ctx: null,
+  specs: {
+    oops: [[196, .09, .35]], pop: [[880, .05, .3], [1320, .05, .25]],
+    ding: [[1047, .09, .3], [1319, .09, .3], [1568, .18, .3]],
+    tada: [[523, .1, .3], [659, .1, .3], [784, .1, .3], [1047, .3, .3]],
+    lose: [[392, .15, .3], [330, .15, .3], [262, .3, .3]],
+  },
+  unlock() {
+    try {
+      if (!this.ctx) this.ctx = new (window.AudioContext || window.webkitAudioContext)();
+      if (this.ctx.state === "suspended") this.ctx.resume();
+    } catch (e) { this.ctx = null; }
+  },
+  play(name) {
+    if (!this.enabled || !this.ctx || !this.specs[name]) return;
+    try {
+      let t = this.ctx.currentTime + .01;
+      for (const [freq, dur, vol] of this.specs[name]) {
+        const o = this.ctx.createOscillator(), g = this.ctx.createGain();
+        o.type = "sine"; o.frequency.value = freq;
+        g.gain.setValueAtTime(0, t);
+        g.gain.linearRampToValueAtTime(vol * .6, t + .009);
+        g.gain.setValueAtTime(vol * .6, t + dur * .6);
+        g.gain.linearRampToValueAtTime(0, t + dur);
+        o.connect(g).connect(this.ctx.destination);
+        o.start(t); o.stop(t + dur + .02);
+        t += dur;
+      }
+    } catch (e) { }
+  },
+};
+const SPEAKER = {
+  ok: "speechSynthesis" in window,
+  say(text) {
+    if (!this.ok) return;
+    speechSynthesis.cancel();
+    const u = new SpeechSynthesisUtterance(text); u.rate = .9;
+    speechSynthesis.speak(u);
+  },
+  stop() { if (this.ok) speechSynthesis.cancel(); },
+};
+function speakButton(textFn) {
+  if (!SPEAKER.ok) return h("span");
+  return btn("♪ Read to me", () => SPEAKER.say(textFn()), "#1c7ed6", 14, "padding:6px 14px");
+}
+
+// ================================================================ keyboard view
+function keyboardView(unit = 46) {
+  const pad = 8, gap = 4;
+  const el = h("div", { class: "kb", style: `width:${15.2 * unit + 2 * pad}px;height:${5 * unit + 2 * pad}px;margin:0 auto;max-width:100%` });
+  const items = {};
+  const baseFill = k => blend(FINGER_COLORS[FINGER_OF[k] || "th"], "#ffffff", .55);
+  KEY_ROWS.forEach((row, r) => {
+    let x = pad + (r === 4 ? SPACE_OFFSET * unit : 0);
+    const y = pad + r * unit;
+    for (const [key, lab, w] of row) {
+      const size = lab.length === 1 ? Math.round(unit * .42) : Math.round(unit * .29);
+      const k = h("div", { class: "k" + (key === "f" || key === "j" ? " bump" : ""),
+        style: `left:${x}px;top:${y}px;width:${w * unit - gap}px;height:${unit - gap}px;font-size:${size}px;background:${baseFill(key)}` }, lab);
+      el.append(k); items[key] = k; x += w * unit;
+    }
+  });
+  let lit = [];
+  const view = {
+    el,
+    highlight(keys) {
+      for (const k of lit) if (items[k]) { items[k].classList.remove("lit"); items[k].style.background = baseFill(k); }
+      lit = keys.filter(Boolean);
+      for (const k of lit) if (items[k]) { items[k].classList.add("lit"); items[k].style.background = FINGER_COLORS[FINGER_OF[k] || "th"]; }
+    },
+    highlightChar(ch) {
+      if (ch == null) return view.highlight([]);
+      const [base, shift] = keyInfo(ch);
+      view.highlight([base, shift]);
+    },
+    paint(colors) {
+      for (const [k, e] of Object.entries(items)) { e.classList.remove("lit"); e.style.background = colors[k] || "#f1f3f5"; }
+    },
+  };
+  // shrink to fit narrow screens
+  const natural = 15.2 * unit + 2 * pad;
+  requestAnimationFrame(() => {
+    const avail = el.parentElement ? el.parentElement.clientWidth : natural;
+    if (avail && avail < natural) { el.style.transform = `scale(${avail / natural})`; el.style.transformOrigin = "top left"; el.style.marginBottom = `${-(1 - avail / natural) * (5 * unit + 2 * pad)}px`; }
+  });
+  return view;
+}
+
+// =================================================================== hands view
+const SVGNS = "http://www.w3.org/2000/svg";
+function svg(tag, attrs) { const e = document.createElementNS(SVGNS, tag); for (const k in attrs) e.setAttribute(k, attrs[k]); return e; }
+function oval(x1, y1, x2, y2, fill, stroke = "#adb5bd", sw = 2) {
+  return svg("ellipse", { cx: (x1 + x2) / 2, cy: (y1 + y2) / 2, rx: (x2 - x1) / 2, ry: (y2 - y1) / 2, fill, stroke, "stroke-width": sw });
+}
+function handsView() {
+  const LAYOUT = { lp: [18, 52, 58], lr: [48, 30, 80], lm: [78, 20, 90], li: [108, 30, 80],
+    ri: [232, 30, 80], rm: [262, 20, 90], rr: [292, 30, 80], rp: [322, 52, 58] };
+  const el = svg("svg", { width: 360, height: 190, viewBox: "0 0 360 190" });
+  el.style.maxWidth = "100%";
+  el.append(oval(10, 90, 142, 165, "#f8f9fa"), oval(218, 90, 350, 165, "#f8f9fa"));
+  const fingers = {};
+  for (const [f, [x, y, ln]] of Object.entries(LAYOUT)) { const o = oval(x, y, x + 26, y + ln + 20, "#f1f3f5"); fingers[f] = [o]; }
+  fingers.th = [oval(135, 95, 185, 125, "#f1f3f5"), oval(175, 95, 225, 125, "#f1f3f5")];
+  for (const ids of Object.values(fingers)) for (const o of ids) el.append(o);
+  // palms drawn first so fingers sit on top (matches the original's tag_raise)
+  const cap = svg("text", { x: 180, y: 182, "text-anchor": "middle", "font-size": 17, "font-weight": 700, fill: C.INK, "font-family": "Segoe UI, system-ui, sans-serif" });
+  el.append(cap);
+  const view = {
+    el,
+    show(fs, caption = "") {
+      for (const [f, ids] of Object.entries(fingers)) {
+        const on = fs.includes(f);
+        for (const o of ids) { o.setAttribute("fill", on ? FINGER_COLORS[f] : "#f1f3f5"); o.setAttribute("stroke", on ? C.INK : "#adb5bd"); o.setAttribute("stroke-width", on ? 3 : 2); }
+      }
+      cap.textContent = caption;
+    },
+    showChar(ch) {
+      if (ch == null) return view.show([]);
+      const [, shift, finger] = keyInfo(ch);
+      const fs = [finger]; let caption = FINGER_NAMES[finger];
+      if (shift) { const sf = FINGER_OF[shift]; fs.push(sf); caption = `${FINGER_NAMES[sf]} holds SHIFT  +  ${caption}`; }
+      view.show(fs, caption);
+    },
+  };
+  return view;
+}
+
+// ================================================================ typing engines
+function typedChar(e) {
+  if (e.ctrlKey || e.altKey || e.metaKey) return null;
+  if (!e.key || e.key.length !== 1) return null;
+  return e.key;
+}
+const now = () => Date.now() / 1000;
+class Stats {
+  constructor() { this.start = null; this.end = null; this.correct = 0; this.errors = 0; this.hits = {}; this.misses = {}; }
+  hit(ch) { this.correct++; this.hits[ch] = (this.hits[ch] || 0) + 1; }
+  miss(ch) { this.errors++; this.misses[ch] = (this.misses[ch] || 0) + 1; }
+  get secs() { return this.start ? (this.end || now()) - this.start : 0; }
+  get wpm() { const s = this.secs; return s < 1 ? 0 : (this.correct / 5) / (s / 60); }
+  get acc() { const t = this.correct + this.errors; return t === 0 ? 100 : 100 * this.correct / t; }
+}
+
+// one big line at a time; you must hit the right key to move on
+function lineTyper(lines, { onNext, onDone, onProgress, size = 40 } = {}) {
+  const T = { lines, li: 0, pos: 0, stats: new Stats(), finished: false, onNext, onDone, onProgress,
+    total: lines.reduce((a, l) => a + l.length, 0) };
+  const box = h("div", { class: "typebox", style: `font-size:${size}px` });
+  const next = h("div", { class: "nextline" });
+  T.el = h("div", { style: "width:min(980px,100%);margin:0 auto" }, box, next);
+  let spans = [];
+  T.doneChars = () => T.lines.slice(0, T.li).reduce((a, l) => a + l.length, 0) + T.pos;
+  T.expected = () => T.finished ? null : T.lines[T.li][T.pos];
+  T.render = () => {
+    const line = T.lines[T.li];
+    box.textContent = "";
+    spans = [...line].map((c, i) => h("span", { class: i < T.pos ? "done" : i === T.pos ? "cur todo" : "todo" }, c));
+    box.append(...spans);
+    if (!line.length) box.append(" ");
+    next.textContent = T.li + 1 < T.lines.length ? T.lines[T.li + 1] : "";
+    if (T.onNext) T.onNext(T.expected());
+    if (T.onProgress) T.onProgress(T.doneChars(), T.total);
+  };
+  T.flash = () => {
+    const s = spans[T.pos]; if (!s) return;
+    s.classList.add("err"); setTimeout(() => s.classList.remove("err"), 180);
+  };
+  T.key = e => {
+    if (T.finished) return;
+    const ch = typedChar(e); if (ch == null) return;
+    if (T.stats.start == null) T.stats.start = now();
+    const exp = T.lines[T.li][T.pos];
+    if (ch === exp) {
+      T.stats.hit(exp);
+      T.pos++;
+      if (T.pos >= T.lines[T.li].length) {
+        T.li++; T.pos = 0;
+        if (T.li >= T.lines.length) {
+          T.finished = true; T.stats.end = now();
+          if (T.onProgress) T.onProgress(T.total, T.total);
+          if (T.onNext) T.onNext(null);
+          if (T.onDone) T.onDone(T.stats);
+          return;
+        }
+        SOUNDS.play("pop");
+        T.render();
+      } else {
+        spans[T.pos - 1].className = "done";
+        spans[T.pos].className = "cur todo";
+        if (T.onNext) T.onNext(T.expected());
+        if (T.onProgress) T.onProgress(T.doneChars(), T.total);
+      }
+    } else {
+      T.stats.miss(exp); SOUNDS.play("oops"); T.flash();
+    }
+  };
+  T.render();
+  return T;
+}
+
+// a paragraph you type freely (Backspace allowed) -- used for the WPM test
+function freeTyper(text, { onNext } = {}) {
+  const T = { target: text, typed: [], stats: new Stats(), locked: false, onNext };
+  const box = h("div", { class: "freebox" });
+  const spans = [...text].map(c => h("span", null, c));
+  box.append(...spans);
+  T.el = box;
+  T.uncorrected = () => T.typed.reduce((a, c, i) => a + (c !== T.target[i] ? 1 : 0), 0);
+  T.cursor = () => {
+    for (const s of box.querySelectorAll(".cur")) s.classList.remove("cur");
+    const i = T.typed.length;
+    if (spans[i]) {
+      spans[i].classList.add("cur");
+      const lineH = parseFloat(getComputedStyle(box).lineHeight) || 43;
+      box.scrollTop = Math.max(0, spans[i].offsetTop - lineH * 1.2);
+    }
+    if (T.onNext) T.onNext(i < T.target.length ? T.target[i] : null);
+  };
+  T.key = e => {
+    if (T.locked) return;
+    if (e.key === "Backspace") {
+      if (T.typed.length) { T.typed.pop(); spans[T.typed.length].classList.remove("ok", "bad"); T.cursor(); }
+      return;
+    }
+    const ch = typedChar(e);
+    if (ch == null || T.typed.length >= T.target.length) return;
+    if (T.stats.start == null) T.stats.start = now();
+    const i = T.typed.length, exp = T.target[i];
+    T.typed.push(ch);
+    if (ch === exp) { T.stats.hit(exp); spans[i].classList.add("ok"); }
+    else { T.stats.miss(exp); spans[i].classList.add("bad"); SOUNDS.play("oops"); }
+    T.cursor();
+  };
+  requestAnimationFrame(T.cursor);
+  return T;
+}
+
+function progressBar(color) {
+  const fill = h("div", { style: `background:${color}` });
+  const el = h("div", { class: "pbar" }, fill);
+  return { el, set(f) { fill.style.width = `${Math.max(0, Math.min(1, f)) * 100}%`; } };
+}
+
+function lineChart(values, width = 560, height = 220, goal = null) {
+  const el = svg("svg", { width, height, viewBox: `0 0 ${width} ${height}` });
+  el.style.maxWidth = "100%"; el.style.height = "auto"; el.style.display = "block"; el.style.margin = "0 auto";
+  const text = (x, y, s, anchor = "middle", sz = 12) => { const t = svg("text", { x, y, "text-anchor": anchor, "font-size": sz, fill: C.MUTED, "dominant-baseline": "middle", "font-family": "Segoe UI, system-ui, sans-serif" }); t.textContent = s; el.append(t); };
+  const left = 44, right = 16, top = 16, bot = 30;
+  if (!values.length) { text(width / 2, height / 2, "No results yet -- take a test!", "middle", 18); return el; }
+  let hi = Math.max(...values, goal || 0, 10);
+  hi = (Math.floor(hi / 10) + 1) * 10;
+  const step = Math.max(5, Math.floor(Math.floor(hi / 5) / 5) * 5 || 5);
+  const Y = v => top + (height - top - bot) * (1 - v / hi);
+  for (let v = 0; v <= hi; v += step) {
+    el.append(svg("line", { x1: left, y1: Y(v), x2: width - right, y2: Y(v), stroke: "#f1f3f5" }));
+    text(left - 8, Y(v), String(v), "end");
+  }
+  if (goal) el.append(svg("line", { x1: left, y1: Y(goal), x2: width - right, y2: Y(goal), stroke: C.GOLD, "stroke-width": 2, "stroke-dasharray": "4 3" }));
+  const n = values.length;
+  const pts = values.map((v, i) => [left + (width - left - right) * (n > 1 ? i / (n - 1) : .5), Y(v)]);
+  if (pts.length > 1) el.append(svg("polyline", { points: pts.map(p => p.join(",")).join(" "), fill: "none", stroke: C.ACCENT, "stroke-width": 3 }));
+  for (const [x, y] of pts) el.append(svg("circle", { cx: x, cy: y, r: 5, fill: C.ACCENT, stroke: "#fff", "stroke-width": 2 }));
+  text(width / 2, height - 10, "older  →  newer");
+  return el;
+}
+
+function wrapWords(text, width) {
+  const lines = []; let cur = "";
+  for (const w of text.split(/\s+/).filter(Boolean)) {
+    if (cur && cur.length + 1 + w.length > width) { lines.push(cur); cur = w; }
+    else cur = cur ? `${cur} ${w}` : w;
+  }
+  if (cur) lines.push(cur);
+  return lines;
+}
+
+// =================================================================== app shell
+const root = document.getElementById("app");
+const app = { profileName: null, keyHandler: null, timers: [], frames: [] };
+Object.defineProperty(app, "profile", { get() { return store.data.profiles[this.profileName]; } });
+function later(ms, fn) {
+  const id = setTimeout(() => { app.timers = app.timers.filter(t => t !== id); fn(); }, ms);
+  app.timers.push(id); return id;
+}
+function setProfile(name) {
+  app.profileName = name; store.data.last = name; store.save();
+  SOUNDS.enabled = app.profile.settings.sound;
+}
+function show(screen, opts = {}) {
+  for (const t of app.timers) clearTimeout(t);
+  app.timers = [];
+  SPEAKER.stop();
+  app.keyHandler = null;
+  root.textContent = "";
+  if (document.activeElement && document.activeElement.blur) document.activeElement.blur();
+  screen(opts);
+  window.scrollTo(0, 0);
+}
+function saveAndBadges() {
+  const p = app.profile;
+  const nw = BADGES.filter(b => !p.badges.includes(b[0]) && b[3](p));
+  p.badges.push(...nw.map(b => b[0]));
+  store.save();
+  return nw;
+}
+function header(text, back, backText = "← Back") {
+  const right = h("div", { class: "right" });
+  const bar = h("div", { class: "header" },
+    back ? btn(backText, back, "#adb5bd", 14, "padding:6px 14px") : null,
+    h("h2", null, text), right);
+  root.append(bar);
+  return right;
+}
+const capsEl = document.getElementById("caps");
+const TYPING_KEYS = new Set([" ", "Backspace", "'", "/", "Tab"]);
+document.addEventListener("keydown", e => {
+  SOUNDS.unlock();
+  try { capsEl.style.display = e.getModifierState && e.getModifierState("CapsLock") ? "block" : "none"; } catch (err) { }
+  if (e.target && (e.target.tagName === "INPUT" || e.target.tagName === "TEXTAREA")) return;
+  if (!app.keyHandler) return;
+  if (!(e.ctrlKey || e.metaKey || e.altKey) && (e.key.length === 1 || TYPING_KEYS.has(e.key))) e.preventDefault();
+  if (e.repeat && e.key === "Enter") return;
+  app.keyHandler(e);
+});
+document.addEventListener("pointerdown", () => SOUNDS.unlock());
+// remind the kid to click into the page when it lost focus (e.g. when shown inside another site)
+const focusNote = document.getElementById("focusnote");
+window.addEventListener("blur", () => { if (app.keyHandler) focusNote.style.display = "block"; });
+window.addEventListener("focus", () => { focusNote.style.display = "none"; });
+document.addEventListener("pointerdown", () => { focusNote.style.display = "none"; window.focus(); });
+
+// ================================================================== profiles
+function ProfileScreen() {
+  root.append(title("Typing Quest", 54, C.ACCENT, "text-align:center;margin-top:50px"));
+  root.append(label("Learn to type like a pro -- one key at a time!", 20, C.MUTED, "text-align:center;margin-bottom:30px"));
+  root.append(label("Who's typing today?", 25, C.INK, "text-align:center;font-weight:700;margin:8px"));
+  const colors = ["#12b886", "#228be6", "#e64980", "#fd7e14", "#7950f2", "#fab005"];
+  const box = h("div", { class: "col", style: "gap:10px" });
+  store.names.forEach((name, i) => {
+    box.append(h("div", { class: "row" },
+      btn(`  ${name}  `, () => { setProfile(name); show(MenuScreen); }, colors[i % colors.length], 25, "min-width:280px"),
+      h("span", { class: "link", onclick: () => {
+        if (confirm(`Remove ${name} and ALL of ${name}'s progress?\nThis can't be undone.`)) { store.del(name); show(ProfileScreen); }
+      } }, "remove")));
+  });
+  root.append(box);
+  const input = h("input", { type: "text", maxlength: 20, "aria-label": "New player name" });
+  const create = () => {
+    const name = input.value.trim().slice(0, 20);
+    if (!name) return;
+    store.add(name); setProfile(name); show(MenuScreen);
+  };
+  input.addEventListener("keydown", e => { if (e.key === "Enter") create(); });
+  root.append(h("div", { class: "row", style: "margin-top:30px" },
+    h("div", { class: "card row", style: "padding:14px 20px" },
+      label("New player name:", 18), input, btn("Add Player", create, C.GOOD, 17, "padding:8px 16px"))));
+  if (!store.names.length) setTimeout(() => input.focus(), 50);
+}
+
+// ====================================================================== menu
+function nextLessonIndex() {
+  const p = app.profile;
+  const i = LESSONS.findIndex(l => !lessonDone(p, l.id));
+  return i < 0 ? LESSONS.length - 1 : i;
+}
+const lessonUnlocked = i => i === 0 || store.data.unlock_all || lessonDone(app.profile, LESSONS[i - 1].id);
+function statCard(big, small, col, bigSize = 30) {
+  return h("div", { class: "card stat" }, h("b", { style: `color:${col};font-size:${bigSize}px` }, big), h("span", null, small));
+}
+
+function MenuScreen() {
+  const p = app.profile;
+  root.append(h("div", { class: "header", style: "padding-top:24px" },
+    title(`Hi, ${app.profileName}!`, 42, C.ACCENT),
+    h("div", { class: "right" }, btn("Switch Player", () => show(ProfileScreen), "#adb5bd", 14, "padding:6px 14px"))));
+  const done = LESSONS.filter(l => lessonDone(p, l.id)).length;
+  root.append(h("div", { class: "row", style: "margin:10px 0 22px;gap:20px" },
+    statCard(`${totalStars(p)} ★`, "stars earned", C.GOLD),
+    statCard(`${done}/${LESSONS.length}`, "lessons done", C.GOOD),
+    statCard(fmt0(bestTestWpm(p)), "best test WPM", "#1c7ed6"),
+    statCard(`${p.badges.length}/${BADGES.length}`, "trophies", "#e64980")));
+  const ni = nextLessonIndex();
+  root.append(h("div", { class: "row", style: "margin-bottom:22px" },
+    btn(`▶  Keep Going:  ${LESSONS[ni].title}`, () => show(LessonScreen, { index: ni }), C.GOOD, 27, "padding:16px 30px")));
+  const tiles = [
+    ["Lessons", "Learn every key\nstep by step", "#7950f2", () => show(LessonMapScreen)],
+    ["Speed Test", "How many words\nper minute?", "#1c7ed6", () => show(TestSetupScreen)],
+    ["Games", "Word Rain and\nRocket Race", "#f76707", () => show(GamesScreen)],
+    ["My Progress", "Charts, trophies\nand tricky keys", "#e64980", () => show(ProgressScreen)],
+    ["How to Type", "Sitting, fingers\nand the home row", "#12b886", () => show(LessonScreen, { index: 0 })],
+    ["Settings", "Sounds, keyboard\nhelpers & more", "#868e96", () => show(SettingsScreen)],
+  ];
+  root.append(h("div", { class: "tiles" }, tiles.map(([t, sub, col, cmd]) =>
+    h("div", { class: "tile", style: `background:${col}`, onclick: cmd, role: "button" }, h("b", null, t), h("span", null, sub)))));
+}
+
+// ================================================================ lesson map
+function LessonMapScreen() {
+  header("Lessons", () => show(MenuScreen));
+  const list = h("div", { style: "padding:0 8px" });
+  let stage = null;
+  LESSONS.forEach((l, i) => {
+    const [name, col] = STAGES[l.stage];
+    if (l.stage !== stage) {
+      stage = l.stage;
+      list.append(h("div", { class: "stage-title", style: `color:${col}` }, stage ? `Stage ${stage}:  ${name}` : name));
+    }
+    const unlocked = lessonUnlocked(i);
+    const rec = app.profile.lessons[l.id] || {};
+    const st = rec.stars || 0;
+    list.append(h("div", { class: "lessonrow", style: `border-color:${unlocked ? col : "#dee2e6"}` },
+      h("div", { class: "stripe", style: `background:${unlocked ? col : "#dee2e6"}` }),
+      h("div", { style: `width:36px;text-align:center;font-size:20px;font-weight:700;color:${C.MUTED}` }, String(i)),
+      h("div", { style: `flex:1;font-size:20px;font-weight:700;color:${unlocked ? C.INK : "#adb5bd"}` }, l.title),
+      h("div", { style: `width:90px;font:700 20px var(--mono);color:${unlocked ? col : "#ced4da"}` }, [...l.new].map(k => k.toUpperCase()).join("  ")),
+      h("div", { style: `width:100px;font-size:26px;color:${st ? C.GOLD : "#dee2e6"}` }, starsText(st)),
+      h("div", { style: `width:120px;font-size:14px;color:${C.MUTED}` }, rec.best_wpm ? `best ${fmt0(rec.best_wpm)} wpm` : ""),
+      h("div", { style: "width:110px;text-align:right;padding-right:12px" },
+        unlocked ? btn(st ? "Again" : "Play", () => show(LessonScreen, { index: i }), col, 15, "padding:5px 16px")
+          : h("i", { style: "color:#adb5bd;font-size:15px" }, "locked"))));
+  });
+  root.append(list);
+}
+
+// ==================================================================== lesson
+function LessonScreen({ index }) {
+  const lesson = LESSONS[index];
+  const stageColor = STAGES[lesson.stage][1];
+  if (lesson.kind === "info") return buildInfo();
+  buildIntro();
+
+  function buildInfo() {
+    header("How to Type", () => show(MenuScreen));
+    const grid = h("div", { style: "display:grid;grid-template-columns:repeat(auto-fit,minmax(300px,1fr));gap:16px;margin:6px 0" });
+    GETTING_READY_TIPS.forEach(([hd, t], i) => grid.append(h("div", { class: "card", style: "padding:10px 16px 14px" },
+      h("div", { style: `font-size:20px;font-weight:700;color:${stageColor};margin-bottom:4px` }, `${i + 1}. ${hd}`),
+      h("div", { style: "font-size:17px" }, t))));
+    root.append(grid);
+    root.append(h("div", { class: "row", style: "margin:6px" }, speakButton(() => GETTING_READY_TIPS.map(([hd, t]) => `${hd}. ${t}`).join(" "))));
+    const kb = keyboardView(38), hands = handsView();
+    root.append(h("div", { class: "row", style: "gap:20px;margin:6px 0" }, kb.el, hands.el));
+    kb.highlight([...HOME_KEYS, "space"]);
+    hands.show(Object.keys(FINGER_COLORS), "Match the key color to your finger!");
+    root.append(h("div", { class: "row", style: "margin:10px" }, btn("I'm Ready!", () => {
+      const rec = app.profile.lessons.ready = app.profile.lessons.ready || {};
+      rec.stars = 3; saveAndBadges(); show(LessonScreen, { index: 1 });
+    }, C.GOOD, 22)));
+  }
+
+  function buildIntro() {
+    header(`Lesson ${index}:  ${lesson.title}`, () => show(LessonMapScreen));
+    if (lesson.new) {
+      root.append(h("div", { class: "row", style: "margin:20px 0 10px;gap:20px" },
+        label("New keys:", 22, C.MUTED, "font-weight:700"),
+        [...lesson.new].map(k => {
+          const f = FINGER_OF[k];
+          return h("div", { style: `background:${FINGER_COLORS[f]};border:3px solid ${C.INK};border-radius:10px;padding:0 14px 8px;text-align:center` },
+            h("div", { style: "font:700 54px var(--mono)" }, k.toUpperCase()),
+            h("div", { style: "font-size:14px;font-weight:700" }, FINGER_NAMES[f]));
+        })));
+    }
+    if (lesson.kind === "speed") root.append(title(`GOAL:  ${lesson.goal} WPM`, 44, C.BAD, "text-align:center;margin:24px 0 4px"));
+    root.append(label(lesson.tip, 22, C.INK, "text-align:center;max-width:820px;margin:12px auto"));
+    root.append(h("div", { class: "row" }, speakButton(() => lesson.tip)));
+    const kb = keyboardView();
+    root.append(h("div", { style: "margin:16px 0" }, kb.el));
+    if (lesson.new) kb.highlight([...lesson.new]);
+    root.append(label("Press ENTER or SPACE to start", 18, C.MUTED, "text-align:center;font-style:italic"));
+    root.append(h("div", { class: "row", style: "margin:10px" }, btn("Start!", start, C.GOOD, 25, "padding:10px 40px")));
+    app.keyHandler = e => { if (e.key === "Enter" || e.key === " ") start(); };
+  }
+
+  function start() {
+    root.textContent = "";
+    if (document.activeElement && document.activeElement.blur) document.activeElement.blur();
+    const s = app.profile.settings;
+    const live = header(`Lesson ${index}:  ${lesson.title}`, () => show(LessonMapScreen));
+    const liveLbl = h("div", { style: `font-size:20px;font-weight:700;color:${C.MUTED}` });
+    live.append(liveLbl);
+    const pbar = progressBar(stageColor);
+    root.append(pbar.el);
+    let kb = null, hands = null;
+    const showNext = ch => { if (kb) kb.highlightChar(ch); if (hands) hands.showChar(ch); };
+    const typer = lineTyper(generateLines(lesson), { onDone: done, onProgress: (d, t) => pbar.set(d / t) });
+    root.append(h("div", { style: "padding:0 24px" }, typer.el));
+    const bottom = h("div", { class: "row", style: "gap:20px;margin:18px 0" });
+    root.append(bottom);
+    if (s.keyboard) { kb = keyboardView(); bottom.append(kb.el); }
+    if (s.hands) { hands = handsView(); bottom.append(hands.el); }
+    root.append(label("Tip: keep your eyes on the screen, not your hands!   (Esc = quit)", 15, C.MUTED, "text-align:center;font-style:italic;margin-top:8px"));
+    typer.onNext = showNext;
+    showNext(typer.expected());
+    app.keyHandler = e => {
+      if (e.key === "Escape") return show(LessonMapScreen);
+      typer.key(e);
+    };
+    const tick = () => {
+      if (typer.finished) return;
+      const st = typer.stats;
+      if (st.start) {
+        const wpm = st.wpm;
+        let col = C.MUTED;
+        if (lesson.kind === "speed") col = wpm >= lesson.goal ? C.GOOD : C.BAD;
+        liveLbl.textContent = `${fmt0(wpm)} WPM    ${fmt0(st.acc)}% accurate`;
+        liveLbl.style.color = col;
+      }
+      later(400, tick);
+    };
+    tick();
+  }
+
+  function done(st) {
+    const wpm = st.wpm, acc = st.acc;
+    const stars = lessonStars(lesson, wpm, acc);
+    const p = app.profile;
+    const rec = p.lessons[lesson.id] = p.lessons[lesson.id] || {};
+    rec.stars = Math.max(rec.stars || 0, stars);
+    rec.best_wpm = Math.max(rec.best_wpm || 0, Math.round(wpm * 10) / 10);
+    rec.best_acc = Math.max(rec.best_acc || 0, Math.round(acc * 10) / 10);
+    recordKeys(p, st.hits, st.misses);
+    p.seconds += Math.floor(st.secs);
+    const badges = saveAndBadges();
+    SOUNDS.play(stars ? "tada" : "lose");
+    show(LessonResultScreen, { index, wpm, acc, stars, misses: st.misses, badges });
+  }
+}
+
+function trickyText(misses, n) {
+  return Object.entries(misses).sort((a, b) => b[1] - a[1]).slice(0, n);
+}
+function badgeLines(badges) {
+  return badges.map(b => label(`★  NEW TROPHY:  ${b[1]}  --  ${b[2]}`, 20, "#e64980", "text-align:center;font-weight:700;margin:2px"));
+}
+
+function LessonResultScreen({ index, wpm, acc, stars, misses, badges }) {
+  const l = LESSONS[index];
+  const passed = stars > 0;
+  root.append(title(stars === 3 ? "Great job!" : passed ? "Nice work!" : "Almost there!", 50, passed ? C.GOOD : "#f76707", "text-align:center;margin:50px 0 6px"));
+  root.append(label(starsText(stars), 90, stars ? C.GOLD : "#dee2e6", "text-align:center;line-height:1.1"));
+  root.append(h("div", { class: "row", style: "margin:16px 0;gap:28px" },
+    statCard(fmt0(wpm), "words per minute", "#1c7ed6", 50), statCard(`${fmt0(acc)}%`, "accuracy", C.GOOD, 50)));
+  let msg;
+  if (l.kind === "speed") {
+    msg = passed ? `You beat the ${l.goal} WPM goal!` : `Goal: ${l.goal} WPM with 85% accuracy. ` +
+      (wpm >= l.goal ? "You were fast enough -- slow down a tiny bit to be more careful!" : "Keep practicing -- you're getting faster!");
+  } else if (!passed) msg = "You need 80% accuracy to pass. Go a little slower and be careful -- speed comes later!";
+  else if (stars === 3) msg = "PERFECT -- 3 stars! You're a typing superstar!";
+  else if (acc >= 95) msg = `Super careful! Type a bit faster (about ${l.target_wpm} WPM) to get 3 stars.`;
+  else msg = "Get 95% accuracy or better to earn more stars.";
+  root.append(label(msg, 20, C.INK, "text-align:center;max-width:800px;margin:6px auto"));
+  const worst = trickyText(misses, 4);
+  if (worst.length) root.append(label("Tricky keys this time:  " + worst.map(([k, n]) => `${k === " " ? "space" : k}  (x${n})`).join("   "), 18, C.BAD, "text-align:center;margin:4px;white-space:pre"));
+  root.append(...badgeLines(badges));
+  const hasNext = passed && index + 1 < LESSONS.length;
+  root.append(h("div", { class: "row", style: "margin:24px 0 8px" },
+    btn("Try Again", () => show(LessonScreen, { index }), "#f76707"),
+    hasNext ? btn("Next Lesson →", () => show(LessonScreen, { index: index + 1 }), C.GOOD) : null,
+    btn("Lesson Map", () => show(LessonMapScreen), "#868e96")));
+  root.append(label("ENTER = " + (hasNext ? "next lesson" : "try again"), 15, C.MUTED, "text-align:center;font-style:italic"));
+  app.keyHandler = e => { if (e.key === "Enter") show(LessonScreen, { index: hasNext ? index + 1 : index }); };
+}
+
+// ================================================================ speed test
+function TestSetupScreen() {
+  header("Speed Test", () => show(MenuScreen));
+  root.append(label("Type the story as fast and as carefully as you can.\nThe clock starts when you press your first key. Mistakes lower your score, so fix them with Backspace!",
+    19, C.INK, "text-align:center;white-space:pre-line;margin:10px"));
+  root.append(h("div", { class: "row", style: "margin:10px 0;gap:20px" },
+    [[30, "#12b886"], [60, "#1c7ed6"], [120, "#7950f2"], [180, "#e64980"]].map(([secs, col]) =>
+      btn(secs < 60 ? `${secs} seconds` : `${secs / 60} minute${secs > 60 ? "s" : ""}`, () => show(TestScreen, { secs }), col, 22, "padding:16px 10px;width:170px"))));
+  const p = app.profile, tests = p.tests;
+  const c = h("div", { class: "card", style: "padding:14px;margin:18px auto;max-width:780px" },
+    label(tests.length ? `Your best:  ${fmt0(bestTestWpm(p))} WPM` : "Your results will show up here", 20, "#1c7ed6", "text-align:center;font-weight:700"),
+    lineChart(tests.slice(-25).map(t => t.wpm), 720, 240));
+  if (tests.length) c.append(label("Latest:   " + tests.slice(-5).reverse().map(t => `${fmt0(t.wpm)} wpm / ${fmt0(t.acc)}%`).join("     "), 15, C.MUTED, "text-align:center;white-space:pre"));
+  root.append(c);
+}
+
+function TestScreen({ secs }) {
+  const right = header("Speed Test", () => show(TestSetupScreen));
+  const liveLbl = h("div", { style: `font-size:20px;font-weight:700;color:${C.MUTED}` }, "Start typing!");
+  const clock = h("div", { style: `font-size:38px;font-weight:700;color:${C.ACCENT}` });
+  right.append(liveLbl, clock);
+  const fmtT = s => { s = Math.max(0, Math.round(s)); return `${Math.floor(s / 60)}:${String(s % 60).padStart(2, "0")}`; };
+  clock.textContent = fmtT(secs);
+  let kb = null;
+  const typer = freeTyper(makeTestText(), { onNext: ch => { if (kb) kb.highlightChar(ch); } });
+  root.append(h("div", { style: "padding:10px 24px" }, typer.el));
+  if (app.profile.settings.keyboard) { kb = keyboardView(40); root.append(h("div", { style: "margin:10px 0" }, kb.el)); }
+  root.append(label("Backspace fixes mistakes.   Esc = quit", 15, C.MUTED, "text-align:center;font-style:italic;white-space:pre"));
+  let over = false;
+  const netWpm = el => Math.max(0, (typer.typed.length / 5 - typer.uncorrected()) / (Math.max(el, 1) / 60));
+  const tick = () => {
+    if (over) return;
+    const st = typer.stats;
+    if (st.start) {
+      const el = now() - st.start, left = secs - el;
+      clock.textContent = fmtT(left); clock.style.color = left <= 10 ? C.BAD : C.ACCENT;
+      if (el >= 3) { liveLbl.textContent = `${fmt0(netWpm(el))} WPM`; liveLbl.style.color = "#1c7ed6"; }
+      if (left <= 0 || typer.typed.length >= typer.target.length) return finish(Math.min(el, secs));
+    }
+    later(200, tick);
+  };
+  app.keyHandler = e => {
+    if (e.key === "Escape") return show(TestSetupScreen);
+    if (!over) typer.key(e);
+  };
+  function finish(elapsed) {
+    over = true; typer.locked = true;
+    const st = typer.stats, wpm = netWpm(elapsed);
+    const gross = typer.typed.length / 5 / (Math.max(elapsed, 1) / 60), acc = st.acc;
+    const p = app.profile, prevBest = bestTestWpm(p);
+    p.tests.push({ t: now(), secs, wpm: Math.round(wpm * 10) / 10, gross: Math.round(gross * 10) / 10, acc: Math.round(acc * 10) / 10 });
+    recordKeys(p, st.hits, st.misses);
+    p.seconds += Math.floor(elapsed);
+    const badges = saveAndBadges();
+    SOUNDS.play("tada");
+    show(TestResultScreen, { wpm, gross, acc, secs, record: wpm > prevBest && prevBest > 0, misses: st.misses, badges });
+  }
+  tick();
+}
+
+function TestResultScreen({ wpm, gross, acc, secs, record, misses, badges }) {
+  root.append(title(record ? "NEW RECORD!" : "Time's up!", 50, record ? "#e64980" : C.ACCENT, "text-align:center;margin:36px 0 10px"));
+  root.append(h("div", { class: "row", style: "gap:24px" },
+    statCard(fmt0(wpm), "words per minute", "#1c7ed6", 50), statCard(`${fmt0(acc)}%`, "accuracy", C.GOOD, 50),
+    statCard(fmt0(gross), "raw speed (before mistakes)", C.MUTED, 50)));
+  const tip = acc >= 95 ? "Amazing accuracy! Now try to go a little faster." :
+    acc >= 85 ? "Good! Try to make fewer mistakes -- careful typing makes you faster in the end." :
+      "Slow down a little. Accuracy first, speed second!";
+  root.append(label(tip, 19, C.INK, "text-align:center;margin:12px"));
+  const worst = trickyText(misses, 5);
+  if (worst.length) root.append(label("Tricky keys:  " + worst.map(([k, n]) => `${k === " " ? "space" : k} (x${n})`).join("   "), 17, C.BAD, "text-align:center;white-space:pre"));
+  root.append(...badgeLines(badges));
+  root.append(h("div", { class: "card", style: "padding:10px;margin:14px auto;max-width:740px" }, lineChart(app.profile.tests.slice(-25).map(t => t.wpm), 700, 200)));
+  root.append(h("div", { class: "row", style: "margin:8px" },
+    btn("Try Again", () => show(TestScreen, { secs }), "#1c7ed6"), btn("Done", () => show(MenuScreen), "#868e96")));
+  app.keyHandler = e => { if (e.key === "Enter") show(TestScreen, { secs }); };
+}
+
+// ===================================================================== games
+function GamesScreen() {
+  header("Games", () => show(MenuScreen));
+  const g = app.profile.games;
+  const c1 = h("div", { class: "card col", style: "padding:14px 24px 20px;gap:6px" },
+    title("Word Rain", 34, "#1c7ed6"),
+    label("Words fall from the sky!\nType them before they hit the ground.", 17, C.INK, "text-align:center;white-space:pre-line;margin:6px"),
+    label(`Best: ${g.rain_best} words`, 18, C.GOLD, "font-weight:700;margin-bottom:4px"),
+    [["Easy", "#12b886", "short words"], ["Medium", "#fab005", "medium words"], ["Hard", "#fa5252", "long words, faster!"],
+      ["My Keys", "#7950f2", "only keys you've learned"]].map(([lvl, col, sub]) =>
+      btn(`${lvl}  -  ${sub}`, () => show(WordRainScreen, { level: lvl }), col, 16, "width:320px;padding:8px")));
+  const speeds = [[5, "Snail"], [10, "Turtle"], [15, "Bunny"], [20, "Fox"], [25, "Horse"], [30, "Cheetah"], [40, "Jet"], [60, "Lightning"]];
+  const c2 = h("div", { class: "card col", style: "padding:14px 24px 20px;gap:6px" },
+    title("Rocket Race", 34, "#f76707"),
+    label("Race your rocket against a robot!\nPick how fast the robot types.", 17, C.INK, "text-align:center;white-space:pre-line;margin:6px"),
+    label(`Wins: ${g.race_wins}     Fastest: ${fmt0(g.race_best_wpm)} WPM`, 18, C.GOLD, "font-weight:700;white-space:pre;margin-bottom:4px"),
+    h("div", { style: "display:grid;grid-template-columns:repeat(4,1fr);gap:8px" },
+      speeds.map(([w, n], i) => btn(`${n}\n${w} WPM`, () => show(RocketRaceScreen, { wpm: w, name: n }),
+        blend("#12b886", "#fa5252", i / (speeds.length - 1)), 15, "padding:6px 4px;width:100px"))));
+  root.append(h("div", { class: "row", style: "align-items:flex-start;gap:32px;margin-top:20px" }, c1, c2));
+}
+
+function WordRainScreen({ level }) {
+  const W = 1000, H = 560;
+  const info = h("div", { style: "font-size:22px;font-weight:700;white-space:pre" });
+  header(`Word Rain  (${level})`, () => show(GamesScreen)).append(info);
+  const cv = h("canvas", { class: "game", width: W, height: H });
+  root.append(cv);
+  const ctx = cv.getContext("2d");
+  const FONT = "bold 28px " + getComputedStyle(document.body).getPropertyValue("--mono");
+  ctx.font = FONT;
+  const measure = s => { ctx.font = FONT; return ctx.measureText(s).width; };
+  let pool;
+  if (level === "Easy") pool = WORDS.filter(w => w.length <= 3);
+  else if (level === "Medium") pool = WORDS.filter(w => w.length >= 4 && w.length <= 5);
+  else if (level === "Hard") pool = WORDS.filter(w => w.length >= 5);
+  else {
+    const keys = learnedKeys(Math.max(nextLessonIndex() - 1, 1));
+    pool = wordsFrom(keys);
+    if (pool.length < 8) {
+      const ks = [...keys].filter(k => /[a-z]/.test(k)).sort();
+      const use = ks.length ? ks : ["f", "j"];
+      pool = Array.from({ length: 40 }, () => Array.from({ length: randint(2, 3) }, () => choice(use)).join(""));
+    }
+  }
+  const stars = Array.from({ length: 40 }, () => [randint(0, W), randint(0, H - 80)]);
+  const words = [];
+  let buf = "", score = 0, lives = 5, over = false, msg = "Get ready!", typedRed = false, overInfo = null;
+  const speed = { Easy: .7, Medium: .9, Hard: 1.2, "My Keys": .7 }[level];
+  const spawnMs = { Easy: 2600, Medium: 2300, Hard: 1900, "My Keys": 2600 }[level];
+  const startT = now();
+  const updInfo = () => { info.textContent = `Score: ${score}     ` + "♥".repeat(lives) + "♡".repeat(5 - lives); info.style.color = lives <= 2 ? C.BAD : C.INK; };
+  const draw = () => {
+    ctx.fillStyle = "#dbe4ff"; ctx.fillRect(0, 0, W, H);
+    ctx.fillStyle = "#fff"; for (const [x, y] of stars) { ctx.beginPath(); ctx.arc(x + 1.5, y + 1.5, 1.5, 0, 7); ctx.fill(); }
+    ctx.fillStyle = "#5c7cfa"; ctx.fillRect(0, H - 56, W, 56);
+    ctx.textBaseline = "middle";
+    ctx.font = "15px " + getComputedStyle(document.body).getPropertyValue("--ui"); ctx.fillStyle = "#dbe4ff"; ctx.textAlign = "left";
+    ctx.fillText("you typed:", 20, H - 26);
+    ctx.font = FONT;
+    for (const w of words) {
+      const p = buf && w.text.startsWith(buf) ? buf : "";
+      ctx.fillStyle = w.col; ctx.fillRect(w.x, w.y, w.w, 44);
+      ctx.lineWidth = p ? 4 : 2; ctx.strokeStyle = p ? C.GOOD : "#4c6ef5"; ctx.strokeRect(w.x, w.y, w.w, 44);
+      ctx.textAlign = "left";
+      ctx.fillStyle = C.GOOD; ctx.fillText(p, w.x + 14, w.y + 23);
+      ctx.fillStyle = C.INK; ctx.fillText(w.text.slice(p.length), w.x + 14 + measure(p), w.y + 23);
+    }
+    ctx.textAlign = "center"; ctx.fillStyle = typedRed ? "#ffa8a8" : "#fff"; ctx.font = "bold 30px " + getComputedStyle(document.body).getPropertyValue("--mono");
+    ctx.fillText(buf, W / 2, H - 26);
+    const ui = getComputedStyle(document.body).getPropertyValue("--ui");
+    if (msg) { ctx.font = `bold 52px ${ui}`; ctx.fillStyle = C.ACCENT; ctx.fillText(msg, W / 2, H / 2 - 40); }
+    if (overInfo) {
+      ctx.fillStyle = "#fff"; ctx.fillRect(W / 2 - 300, 120, 600, 280);
+      ctx.lineWidth = 4; ctx.strokeStyle = C.ACCENT; ctx.strokeRect(W / 2 - 300, 120, 600, 280);
+      ctx.font = `bold 46px ${ui}`; ctx.fillStyle = C.ACCENT; ctx.fillText("Game Over!", W / 2, 170);
+      ctx.font = `bold 29px ${ui}`; ctx.fillStyle = C.INK; ctx.fillText(`You popped ${score} words`, W / 2, 235);
+      ctx.font = `bold 23px ${ui}`; ctx.fillStyle = overInfo.best ? "#e64980" : C.MUTED;
+      ctx.fillText(overInfo.best ? "NEW HIGH SCORE!" : `Best: ${app.profile.games.rain_best}`, W / 2, 280);
+      if (overInfo.badges.length) { ctx.font = `bold 18px ${ui}`; ctx.fillStyle = "#e64980"; ctx.fillText("★ New trophy: " + overInfo.badges.map(b => b[1]).join(", "), W / 2, 318); }
+      ctx.font = `18px ${ui}`; ctx.fillStyle = C.MUTED; ctx.fillText("ENTER = play again     Esc = back", W / 2, 365);
+    }
+  };
+  const spawn = () => {
+    if (over) return;
+    const text = choice(pool), w = measure(text) + 28;
+    words.push({ text, w, x: randint(10, Math.max(10, Math.floor(W - w - 10))), y: 0,
+      col: choice(["#ffffff", "#fff3bf", "#d3f9d8", "#ffe3e3", "#e5dbff"]) });
+    later(Math.max(700, spawnMs - score * 45), spawn);
+  };
+  const tick = () => {
+    if (over) return;
+    const dy = speed + score * .03, ground = H - 56;
+    for (const w of words.slice()) {
+      w.y += dy;
+      if (w.y + 44 >= ground) {
+        words.splice(words.indexOf(w), 1);
+        lives--; SOUNDS.play("oops");
+        if (buf && w.text.startsWith(buf) && !words.some(o => o.text.startsWith(buf))) buf = "";
+        updInfo();
+        if (lives <= 0) { gameOver(); draw(); return; }
+      }
+    }
+    draw();
+    later(30, tick);
+  };
+  function gameOver() {
+    over = true;
+    const g = app.profile.games, best = score > g.rain_best;
+    g.rain_best = Math.max(g.rain_best, score);
+    app.profile.seconds += Math.floor(now() - startT);
+    const badges = saveAndBadges();
+    SOUNDS.play(best ? "tada" : "lose");
+    overInfo = { best, badges };
+  }
+  app.keyHandler = e => {
+    if (e.key === "Escape") return show(GamesScreen);
+    if (over) { if (e.key === "Enter") show(WordRainScreen, { level }); return; }
+    if (e.key === "Backspace") { buf = buf.slice(0, -1); draw(); return; }
+    const ch = typedChar(e);
+    if (!ch || ch === " ") return;
+    const cand = buf + ch;
+    const matches = words.filter(w => w.text.startsWith(cand));
+    if (!matches.length) {
+      SOUNDS.play("oops"); typedRed = true; draw();
+      later(150, () => { typedRed = false; draw(); });
+      return;
+    }
+    buf = cand;
+    const doneW = matches.filter(w => w.text === cand);
+    if (doneW.length) {
+      const w = doneW.reduce((a, b) => (b.y > a.y ? b : a));
+      words.splice(words.indexOf(w), 1);
+      score++; buf = ""; SOUNDS.play("pop"); updInfo();
+    }
+    draw();
+  };
+  updInfo(); draw();
+  later(1200, () => { msg = ""; draw(); });
+  later(1200, spawn);
+  later(1200, tick);
+}
+
+function RocketRaceScreen({ wpm: robotWpm, name: robotName }) {
+  const W = 1000, H = 230;
+  const liveLbl = h("div", { style: `font-size:20px;font-weight:700;color:${C.MUTED}` });
+  header(`Rocket Race  vs  ${robotName} Robot (${robotWpm} WPM)`, () => show(GamesScreen)).append(liveLbl);
+  const cv = h("canvas", { class: "game", width: W, height: H });
+  root.append(cv);
+  const ctx = cv.getContext("2d");
+  const ui = getComputedStyle(document.body).getPropertyValue("--ui");
+  const lines = wrapWords(sample(RACE_TEXTS, 2).join(" "), 40);
+  const total = lines.reduce((a, l) => a + l.length, 0);
+  const starsBg = Array.from({ length: 60 }, () => [randint(0, W), randint(0, H)]);
+  const x0 = 90, x1 = W - 70;
+  const pos = { you: 0, bot: 0 };
+  let banner = "", bannerCol = "#ffe066";
+  const rocket = (y, color, frac) => {
+    const x = x0 - 70 + frac * (x1 - x0), d = darker(color);
+    const poly = (pts, fill, stroke) => {
+      ctx.beginPath(); ctx.moveTo(pts[0], pts[1]);
+      for (let i = 2; i < pts.length; i += 2) ctx.lineTo(pts[i], pts[i + 1]);
+      ctx.closePath(); ctx.fillStyle = fill; ctx.fill();
+      if (stroke) { ctx.lineWidth = 2; ctx.strokeStyle = stroke; ctx.stroke(); }
+    };
+    poly([x, y + 14, x - 22, y + 20, x, y + 26], "#ffa94d");
+    poly([x, y + 10, x - 12, y, x + 10, y + 10], d);
+    poly([x, y + 30, x - 12, y + 40, x + 10, y + 30], d);
+    poly([x, y + 10, x + 50, y + 10, x + 70, y + 20, x + 50, y + 30, x, y + 30], color, "#fff");
+    ctx.beginPath(); ctx.arc(x + 38, y + 20, 6, 0, 7); ctx.fillStyle = "#74c0fc"; ctx.fill(); ctx.lineWidth = 1; ctx.strokeStyle = "#fff"; ctx.stroke();
+  };
+  const draw = () => {
+    ctx.fillStyle = "#212b54"; ctx.fillRect(0, 0, W, H);
+    ctx.fillStyle = "#fff"; for (const [x, y] of starsBg) ctx.fillRect(x, y, 2, 2);
+    ctx.textBaseline = "middle"; ctx.textAlign = "left";
+    for (const [y, lab] of [[70, app.profileName], [160, `${robotName} Robot`]]) {
+      ctx.setLineDash([6, 6]); ctx.strokeStyle = "#4c6ef5"; ctx.lineWidth = 1;
+      ctx.beginPath(); ctx.moveTo(x0, y + 26); ctx.lineTo(x1, y + 26); ctx.stroke(); ctx.setLineDash([]);
+      ctx.font = `bold 16px ${ui}`; ctx.fillStyle = "#fff"; ctx.fillText(lab, 10, y - 30);
+    }
+    for (let i = 0; i < 8; i++) for (let j = 0; j < 2; j++) {
+      ctx.fillStyle = (i + j) % 2 === 0 ? "#fff" : "#000"; ctx.fillRect(x1 + j * 12, 20 + i * 24, 12, 24);
+    }
+    rocket(70, "#ff6b6b", pos.you); rocket(160, "#adb5bd", pos.bot);
+    if (banner) { ctx.textAlign = "center"; ctx.font = `bold 70px ${ui}`; ctx.fillStyle = bannerCol; ctx.fillText(banner, W / 2, H / 2); }
+  };
+  const move = (who, frac) => { pos[who] = Math.min(1, frac); draw(); };
+  const typer = lineTyper(lines, { onDone: () => { if (state === "race") end(true); }, onProgress: (d, t) => move("you", d / t), size: 36 });
+  const typerWrap = h("div", { style: "padding:10px 24px" }, typer.el);
+  root.append(typerWrap);
+  let kb = null;
+  if (app.profile.settings.keyboard) { kb = keyboardView(36); root.append(kb.el); typer.onNext = kb.highlightChar; kb.highlight([]); }
+  let state = "count", goTime = null;
+  const tick = () => {
+    if (state !== "race") return;
+    const el = now() - goTime;
+    const frac = (el * robotWpm * 5 / 60) / total;
+    move("bot", frac);
+    if (el > 2) { liveLbl.textContent = `You: ${fmt0(typer.stats.wpm)} WPM`; liveLbl.style.color = "#1c7ed6"; }
+    if (frac >= 1) return end(false);
+    later(40, tick);
+  };
+  const count = n => {
+    if (n > 0) { banner = String(n); draw(); SOUNDS.play("pop"); later(800, () => count(n - 1)); }
+    else {
+      banner = "GO!"; draw(); SOUNDS.play("ding");
+      later(600, () => { if (state === "race") { banner = ""; draw(); } });
+      state = "race"; goTime = now(); typer.stats.start = goTime;
+      if (kb) kb.highlightChar(typer.expected());
+      tick();
+    }
+  };
+  function end(won) {
+    state = "done";
+    const st = typer.stats;
+    if (st.end == null) st.end = now();
+    const g = app.profile.games;
+    if (won) { g.race_wins++; g.race_best_wpm = Math.max(g.race_best_wpm, Math.round(st.wpm * 10) / 10); }
+    recordKeys(app.profile, st.hits, st.misses);
+    app.profile.seconds += Math.floor(st.secs);
+    const badges = saveAndBadges();
+    SOUNDS.play(won ? "tada" : "lose");
+    banner = won ? "YOU WIN!" : "Robot wins!"; bannerCol = won ? "#ffe066" : "#ff8787"; draw();
+    let msg = `You typed ${fmt0(st.wpm)} WPM with ${fmt0(st.acc)}% accuracy!` + (won ? "  Try a faster robot!" : "  Try again, or pick a slower robot.");
+    if (badges.length) msg += "   ★ New trophy: " + badges.map(b => b[1]).join(", ");
+    typerWrap.replaceWith(h("div", null,
+      label(msg, 21, C.INK, "text-align:center;font-weight:700;margin:10px"),
+      h("div", { class: "row", style: "margin:6px 0 12px" },
+        btn("Race Again (Enter)", () => show(RocketRaceScreen, { wpm: robotWpm, name: robotName }), "#f76707"),
+        btn("Pick Another Robot", () => show(GamesScreen), "#868e96"))));
+    if (kb) kb.highlight([]);
+  }
+  app.keyHandler = e => {
+    if (e.key === "Escape") return show(GamesScreen);
+    if (state === "race") typer.key(e);
+    else if (state === "done" && e.key === "Enter") show(RocketRaceScreen, { wpm: robotWpm, name: robotName });
+  };
+  draw();
+  count(3);
+}
+
+// ================================================================== progress
+function ProgressScreen() {
+  header(`${app.profileName}'s Progress`, () => show(MenuScreen));
+  const p = app.profile, mins = Math.floor(p.seconds / 60);
+  root.append(h("div", { class: "row", style: "gap:16px;margin:8px 0" },
+    statCard(fmt0(bestTestWpm(p)), "best test WPM", "#1c7ed6", 28),
+    statCard(String(p.tests.length), "speed tests", "#7950f2", 28),
+    statCard(`${totalStars(p)}/${3 * LESSONS.length}`, "stars", C.GOLD, 28),
+    statCard(mins >= 60 ? `${Math.floor(mins / 60)}h ${mins % 60}m` : `${mins} min`, "practice time", C.GOOD, 28),
+    statCard(String(p.games.rain_best), "Word Rain best", "#1c7ed6", 28),
+    statCard(String(p.games.race_wins), "races won", "#f76707", 28)));
+  root.append(h("div", { class: "card", style: "margin:10px 0;padding:8px" },
+    label("Speed Test history (words per minute)", 20, C.INK, "text-align:center;font-weight:700"),
+    lineChart(p.tests.slice(-30).map(t => t.wpm), 900, 230)));
+  const kb = keyboardView();
+  const kc = h("div", { class: "card", style: "margin:10px 0;padding:8px 8px 12px" },
+    label("Tricky Keys", 20, C.INK, "text-align:center;font-weight:700"),
+    label("Green = you almost always get it right.   Red = practice this one!   Gray = not enough typing yet.", 14, C.MUTED, "text-align:center;margin-bottom:8px"),
+    kb.el);
+  const colors = {}; let worst = [];
+  for (const [ch, [hits, miss]] of Object.entries(p.keys)) {
+    const tot = hits + miss;
+    if (tot < 5) continue;
+    const rate = miss / tot;
+    colors[keyInfo(ch)[0]] = blend("#8ce99a", "#ff6b6b", Math.min(1, rate / .15));
+    worst.push([rate, ch]);
+  }
+  kb.paint(colors);
+  worst = worst.sort((a, b) => b[0] - a[0]).filter(w => w[0] > .03).slice(0, 6);
+  if (worst.length) kc.append(label("Practice these:  " + worst.map(([r, ch]) => `${ch === " " ? "space" : ch}  (${fmt0(r * 100)}% missed)`).join("    "), 17, C.BAD, "text-align:center;font-weight:700;white-space:pre-wrap;margin-top:8px"));
+  root.append(kc);
+  root.append(h("div", { class: "card", style: "margin:10px 0;padding-top:8px" },
+    label("Trophies", 20, C.INK, "text-align:center;font-weight:700;margin-bottom:6px"),
+    h("div", { class: "trophies" }, BADGES.map(([bid, name, desc]) => {
+      const got = p.badges.includes(bid);
+      return h("div", { class: "trophy", style: `background:${got ? "#fff3bf" : "#f1f3f5"};border-color:${got ? C.GOLD : "#dee2e6"}` },
+        h("div", { style: `font-size:30px;color:${got ? C.GOLD : "#ced4da"}` }, got ? "★" : "☆"),
+        h("div", { style: `font-size:15px;font-weight:700;color:${got ? C.INK : "#adb5bd"}` }, name),
+        h("div", { style: `font-size:12px;color:${C.MUTED}` }, desc));
+    }))));
+}
+
+// ================================================================== settings
+function SettingsScreen() {
+  header("Settings", () => show(MenuScreen));
+  const s = app.profile.settings;
+  const apply = () => { SOUNDS.enabled = s.sound; store.save(); };
+  const check = (text, get, set, size = 19) => {
+    const box = h("input", { type: "checkbox" });
+    box.checked = get();
+    box.addEventListener("change", () => { set(box.checked); apply(); });
+    return h("label", { class: "check", style: `font-size:${size}px` }, box, text);
+  };
+  root.append(h("div", { class: "card", style: "max-width:600px;margin:20px auto;padding:14px 30px" },
+    label(`Settings for ${app.profileName}`, 20, C.ACCENT, "text-align:center;font-weight:700;margin-bottom:8px"),
+    [["sound", "Play sounds"], ["keyboard", "Show the on-screen keyboard"], ["hands", "Show which finger to use (hands picture)"]]
+      .map(([k, t]) => check(t, () => s[k], v => { s[k] = v; })),
+    label("Tip: once you know the keys, turn off the keyboard and hands so you learn not to look!", 15, C.MUTED, "text-align:center;font-style:italic;margin-top:8px")));
+  const fileIn = h("input", { type: "file", accept: ".json,application/json", style: "display:none" });
+  fileIn.addEventListener("change", () => {
+    const f = fileIn.files[0]; if (!f) return;
+    f.text().then(txt => {
+      const d = JSON.parse(txt);
+      if (!d || typeof d.profiles !== "object") throw new Error("bad file");
+      if (!confirm("Load this backup? It will replace the players saved in this browser.")) return;
+      store.data = { profiles: {}, last: null, unlock_all: false, ...d };
+      store.fix(); store.save();
+      if (store.data.profiles[app.profileName]) show(SettingsScreen); else show(ProfileScreen);
+    }).catch(() => alert("That file isn't a Typing Quest backup."));
+  });
+  const backup = () => {
+    const blob = new Blob([JSON.stringify(store.data, null, 1)], { type: "application/json" });
+    const a = h("a", { href: URL.createObjectURL(blob), download: "typing-quest-backup.json" });
+    document.body.append(a); a.click(); a.remove();
+  };
+  root.append(h("div", { class: "card col", style: "max-width:600px;margin:10px auto;padding:14px 30px;gap:8px" },
+    label("Grown-ups", 20, "#e64980", "font-weight:700"),
+    check("Unlock all lessons (skip ahead)", () => !!store.data.unlock_all, v => { store.data.unlock_all = v; }, 18),
+    btn(`Reset ${app.profileName}'s progress`, () => {
+      const n = app.profileName;
+      if (confirm(`Erase ALL of ${n}'s lessons, stars, tests and trophies?\nThis can't be undone.`)) {
+        const settings = app.profile.settings;
+        store.data.profiles[n] = newProfile(); store.data.profiles[n].settings = settings;
+        store.save(); show(MenuScreen);
+      }
+    }, C.BAD, 15, "padding:6px 12px"),
+    label("Progress is saved in this web browser on this computer. To move it to another computer, download a backup here and load it there.", 13, C.MUTED, "text-align:center;max-width:480px"),
+    h("div", { class: "row" }, btn("Download backup", backup, "#1c7ed6", 14, "padding:6px 12px"),
+      btn("Load backup", () => fileIn.click(), "#1c7ed6", 14, "padding:6px 12px"), fileIn)));
+}
+
+// ===================================================================== start
+store.load();
+const last = store.data.last;
+if (last && store.data.profiles[last]) { setProfile(last); show(MenuScreen); }
+else show(ProfileScreen);
+</script>
+</body>
+</html>
